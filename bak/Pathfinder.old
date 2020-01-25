@@ -1,0 +1,124 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using UnityEngine;
+
+public class Pathfinder : Request
+{
+    Grid grid = GameObject.Find("A*").GetComponent<Grid>();
+
+
+    public Pathfinder(Vector3 _caster, Vector3 _target, Action<Vector3[], bool> _callback): base(_caster, _target, _callback)
+    {
+        caster = _caster;
+        target = _target;
+        callback = _callback;
+    }
+
+    public override void DoRequest(Action<Result> callback)
+    {
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
+
+        Vector3[] waypoints   = new Vector3[0];
+        bool      pathSuccess = false;
+
+        Node startNode  = grid.NodeFromWorldPoint(caster);
+        Node targetNode = grid.NodeFromWorldPoint(target);
+
+        if (targetNode.walkable)
+        {
+            Heap<Node> openSet = new Heap<Node>(grid.MaxSize);
+            HashSet<Node> closedSet = new HashSet<Node>();
+            openSet.Add(startNode);
+
+            //while there are still qualified neighbors to check
+            while (openSet.Count > 0)
+            {
+                Node currentNode = openSet.RemoveHead();
+
+                //add node to the heap
+                closedSet.Add(currentNode);
+
+                //if the node you are looking at is the target
+                if (currentNode == targetNode)
+                {
+                    pathSuccess = true;
+                    break;
+                }
+
+                //for each immediate neighbor of the current node
+                foreach (Node neighbor in grid.GetNeighbors(currentNode))
+                {
+                    //if that node is walkable and is not in the closed set/already the best path
+                    if (neighbor.walkable && !closedSet.Contains(neighbor))
+                    {
+                        //calculate the new cost of movement
+                        int newMovementCost = currentNode.gCost + 10;//GetDistance(currentNode, neighbor);
+
+                        if (newMovementCost < neighbor.gCost || !openSet.Contains(neighbor))
+                        {
+                            neighbor.gCost = newMovementCost;
+                            neighbor.hCost = GetDistance(neighbor, targetNode);
+                            neighbor.parent = currentNode;
+
+                            if (!openSet.Contains(neighbor))
+                            {
+                                openSet.Add(neighbor);
+                            }
+                            else
+                            {
+                                openSet.UpdateItem(neighbor);
+                            }
+                        }
+                    }
+                }//end foreach neighbor of the currentNode
+            }//end while openSet is not empty
+        }//end if start and end are walkable
+        sw.Stop();
+        UnityEngine.Debug.Log("Elapsed Time " + sw.ElapsedMilliseconds + "ms");
+        if(pathSuccess)
+        {
+            waypoints = RetracePath(startNode, targetNode);
+            pathSuccess = waypoints.Length > 0;
+        }
+        callback(new Result(waypoints, pathSuccess, this.callback));
+    }
+
+    Vector3[] RetracePath(Node startNode, Node endNode)
+    {
+        List<Node>  path = new List<Node>();
+        Node currentNode = endNode;
+
+        while(currentNode != startNode)
+        {
+            path.Add(currentNode);
+            currentNode = currentNode.parent;
+        }
+        Vector3[] waypoints = PathArray(path);
+        Array.Reverse(waypoints);
+        return waypoints;
+    }
+
+    Vector3[] PathArray(List<Node> path)
+    {   List<Vector3> waypoints = new List<Vector3>();
+        foreach (Node node in path)
+        {
+            waypoints.Add(node.worldPos);
+        }
+        return waypoints.ToArray();
+    }
+
+    int GetDistance(Node nodeA, Node nodeB)
+    {
+        int dstX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
+        int dstY = Mathf.Abs(nodeA.gridY - nodeB.gridY);
+
+        if (dstX > dstY)
+        {
+            return 14 * dstY + 10 * (dstX - dstY);
+        }
+        return 14 * dstX + 10 * (dstY - dstX);
+    }
+
+}

@@ -1,0 +1,25 @@
+﻿using UnityEngine;
+
+public class MouseLocation : MonoBehaviour
+{
+    public Vector3 worldPosition, gridPosition;
+    public float percentX, percentY;
+    Grid grid;
+    private void Awake()
+    {
+        grid = GetComponent<Grid>();
+    }
+    private void Update()
+    {
+        worldPosition = Input.mousePosition;
+
+        percentX = (worldPosition.x + grid.gridWorldSize.x / 2) / grid.gridWorldSize.x;
+        percentY = (worldPosition.y + grid.gridWorldSize.y / 2) / grid.gridWorldSize.y;
+
+        percentX = Mathf.Clamp01(percentX);
+        percentY = Mathf.Clamp01(percentY);
+
+        gridPosition.x = Mathf.RoundToInt((grid.gridSizeX - 1) * percentX);
+        gridPosition.y = Mathf.RoundToInt((grid.gridSizeY - 1) * percentY);
+    }
+}
