@@ -1,2 +1,2 @@
 # TTBG2D
-2D Tactical Turn Based Game
+Unity demonstration of using A* algorithm for player movement
